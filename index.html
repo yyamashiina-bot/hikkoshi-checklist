@@ -899,3 +899,35 @@ renderAll();
 </script>
 </body>
 </html>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCJHFM2uqEzf47Jw9QDOkput3UT0g16j0A",
+  authDomain: "hikkoshi-checklist.firebaseapp.com",
+  databaseURL: "https://hikkoshi-checklist-default-rtdb.firebaseio.com/",
+  projectId: "hikkoshi-checklist",
+  storageBucket: "hikkoshi-checklist.firebasestorage.app",
+  messagingSenderId: "146230464013",
+  appId: "1:146230464013:web:7c0c156e31a2814f208f44"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dataRef = ref(db, "checklist");
+
+// 🔽 保存（既存saveDataに追加する用）
+window.saveToCloud = function(data){
+  set(dataRef, data);
+}
+
+// 🔽 読み込み（同期）
+onValue(dataRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    categories = data;
+    renderAll();
+  }
+});
+</script>
