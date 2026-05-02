@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>引越しチェックリスト</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+    background: #f0f4f8;
+    color: #2d3748;
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px 20px 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+  header p { font-size: 0.85rem; opacity: 0.9; }
+
+  /* サマリーバー */
+  .summary-bar {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .summary-item { text-align: center; }
+  .summary-item .label { font-size: 0.72rem; color: #718096; margin-bottom: 2px; }
+  .summary-item .value { font-size: 1.2rem; font-weight: 700; color: #2d3748; }
+  .summary-item .value.total-cost { color: #667eea; font-size: 1.35rem; }
+  .summary-item .value.done { color: #48bb78; }
+
+  .main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* カテゴリカード */
+  .category {
+    background: white;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+  .category-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 18px;
+    cursor: pointer;
+    user-select: none;
+    gap: 12px;
+    transition: background 0.15s;
+  }
+  .category-header:hover { background: #f7f8ff; }
+  .cat-icon { font-size: 1.3rem; }
+  .cat-info { flex: 1; }
+  .cat-title { font-size: 1rem; font-weight: 700; }
+  .cat-subtitle { font-size: 0.75rem; color: #718096; margin-top: 2px; }
+  .cat-meta {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .cat-cost {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #667eea;
+  }
+  .cat-progress {
+    font-size: 0.72rem;
+    color: #a0aec0;
+    margin-top: 2px;
+  }
+  .cat-toggle {
+    font-size: 0.85rem;
+    color: #a0aec0;
+    transition: transform 0.2s;
+    margin-left: 6px;
+  }
+  .cat-toggle.open { transform: rotate(180deg); }
+
+  /* プログレスバー */
+  .progress-bar-wrap {
+    height: 3px;
+    background: #edf2f7;
+    margin: 0 18px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s;
+    border-radius: 2px;
+  }
+
+  /* アイテムリスト */
+  .category-body { padding: 4px 0 12px; }
+  .category-body.collapsed { display: none; }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    padding: 9px 18px;
+    gap: 10px;
+    transition: background 0.1s;
+    border-bottom: 1px solid #f7fafc;
+  }
+  .item-row:last-of-type { border-bottom: none; }
+  .item-row:hover { background: #f7f8ff; }
+  .item-row.checked { opacity: 0.55; }
+  .item-row.checked .item-name { text-decoration: line-through; color: #a0aec0; }
+
+  .item-check {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #667eea;
+    flex-shrink: 0;
+  }
+  .item-name {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    min-width: 0;
+  }
+  .item-name-input {
+    flex: 1;
+    font-size: 0.9rem;
+    border: 1px solid #bee3f8;
+    border-radius: 6px;
+    padding: 4px 8px;
+    outline: none;
+    background: #ebf8ff;
+  }
+  .item-name-input:focus { border-color: #667eea; background: white; }
+  .cost-wrap {
+    display: flex;
+    align-items: center;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 130px;
+    flex-shrink: 0;
+  }
+  .cost-yen {
+    padding: 0 6px 0 8px;
+    font-size: 0.8rem;
+    color: #718096;
+    background: #edf2f7;
+    border-right: 1px solid #e2e8f0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .cost-input {
+    width: 100%;
+    padding: 6px 6px;
+    border: none;
+    outline: none;
+    font-size: 0.88rem;
+    background: transparent;
+    text-align: right;
+    color: #2d3748;
+  }
+  .cost-input::placeholder { color: #cbd5e0; }
+  .item-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #e2e8f0;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .item-delete:hover { color: #fc8181; }
+
+  /* 追加ボタン */
+  .add-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 18px 4px;
+    align-items: center;
+  }
+  .new-item-input {
+    flex: 1;
+    font-size: 0.85rem;
+    border: 1px dashed #cbd5e0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    outline: none;
+    color: #4a5568;
+    background: transparent;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .new-item-input:focus { border-color: #667eea; background: white; border-style: solid; }
+  .new-item-input::placeholder { color: #cbd5e0; }
+  .add-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .add-btn:hover { background: #5a67d8; }
+
+  /* 新カテゴリ追加 */
+  .add-category-wrap {
+    background: white;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .add-category-wrap input {
+    flex: 1;
+    min-width: 180px;
+    font-size: 0.9rem;
+    border: 1px dashed #cbd5e0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    outline: none;
+  }
+  .add-category-wrap input:focus { border-color: #667eea; border-style: solid; }
+  .add-cat-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .add-cat-btn:hover { opacity: 0.88; }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #a0aec0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 22px 0 10px 4px;
+  }
+
+  /* メモ */
+  .memo-area {
+    background: white;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .memo-area label { font-size: 0.8rem; color: #718096; display: block; margin-bottom: 6px; font-weight: 600; }
+  .memo-area textarea {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 70px;
+    outline: none;
+    color: #4a5568;
+  }
+  .memo-area textarea:focus { border-color: #667eea; }
+
+  /* 操作ボタン群 */
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .action-btn {
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: #4a5568;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .action-btn:hover { background: #f7f8ff; border-color: #667eea; color: #667eea; }
+  .action-btn.danger:hover { background: #fff5f5; border-color: #fc8181; color: #e53e3e; }
+
+  @media (max-width: 560px) {
+    header h1 { font-size: 1.3rem; }
+    .summary-bar { justify-content: center; }
+    .cost-wrap { width: 110px; }
+  }
+
+  @media print {
+    .summary-bar { position: static; }
+    .add-row, .add-category-wrap, .action-bar, .item-delete, .add-btn, .add-cat-btn { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏠 引越しチェックリスト</h1>
+  <p>各項目にチェック＆金額を入力すると自動で集計されます</p>
+</header>
+
+<div class="summary-bar">
+  <div class="summary-item">
+    <div class="label">合計予算</div>
+    <div class="value total-cost" id="grand-total">¥0</div>
+  </div>
+  <div class="summary-item">
+    <div class="label">完了項目</div>
+    <div class="value done" id="done-count">0 / 0</div>
+  </div>
+  <div class="summary-item">
+    <div class="label">完了済み金額</div>
+    <div class="value" id="done-cost">¥0</div>
+  </div>
+  <div class="summary-item">
+    <div class="label">残り金額</div>
+    <div class="value" id="remaining-cost">¥0</div>
+  </div>
+</div>
+
+<div class="main" id="main-content">
+  <!-- カテゴリはJSで生成 -->
+</div>
+
+<script>
+// ============================================================
+// データ定義
+// ============================================================
+const DEFAULT_CATEGORIES = [
+  {
+    id: 'tetsuzuki',
+    icon: '📋',
+    title: '手続き・行政',
+    subtitle: '役所・免許・郵便など公的手続き',
+    items: [
+      { name: '転出届（旧住所の役所）', cost: '' },
+      { name: '転入届（新住所の役所）', cost: '' },
+      { name: '運転免許証 住所変更', cost: '' },
+      { name: 'マイナンバーカード 住所変更', cost: '' },
+      { name: '郵便局 転居届（1年間転送）', cost: '' },
+      { name: '銀行口座 住所変更（主要な口座）', cost: '' },
+      { name: 'クレジットカード 住所変更', cost: '' },
+      { name: '健康保険証 住所変更', cost: '' },
+      { name: '年金 住所変更（マイナと紐付けなら不要）', cost: '' },
+      { name: '子どもの保育園・学校 転校手続き', cost: '' },
+      { name: '車検証 住所変更（引越しから15日以内）', cost: '' },
+      { name: 'NHK 住所変更', cost: '' },
+    ]
+  },
+  {
+    id: 'infra',
+    icon: '🔌',
+    title: 'インフラ契約',
+    subtitle: '電気・ガス・水道・ネット',
+    items: [
+      { name: '電気 解約（旧居）→ 契約開始（新居）', cost: '' },
+      { name: 'ガス 解約・閉栓（旧居）', cost: '' },
+      { name: 'ガス 開栓・契約（新居）※立会い必要', cost: '' },
+      { name: '水道 解約（旧居）→ 開始（新居）', cost: '' },
+      { name: 'インターネット回線 解約（旧居）', cost: '' },
+      { name: 'インターネット回線 新規契約・工事（新居）', cost: '' },
+      { name: 'Wi-Fiルーター（新規購入の場合）', cost: '' },
+      { name: '火災保険・家財保険 加入・更新', cost: '' },
+    ]
+  },
+  {
+    id: 'hikkoshi',
+    icon: '🚛',
+    title: '引越し作業',
+    subtitle: '業者選定・荷造り・不用品処分',
+    items: [
+      { name: '引越し業者 見積もり・選定', cost: '' },
+      { name: '引越し費用（業者への支払い）', cost: '' },
+      { name: '梱包材（ダンボール・緩衝材）', cost: '' },
+      { name: '不用品 粗大ごみ処分', cost: '' },
+      { name: '不用品 買取・フリマ出品', cost: '' },
+      { name: '旧居 ハウスクリーニング（退去費用）', cost: '' },
+      { name: '旧居 鍵の返却', cost: '' },
+      { name: '新居 入居前クリーニング（自分で or 業者）', cost: '' },
+    ]
+  },
+  {
+    id: 'naisou',
+    icon: '🪟',
+    title: '内装・設備',
+    subtitle: 'カーテン・照明・エアコン工事など',
+    items: [
+      { name: 'カーテン・ブラインド（リビング）', cost: '' },
+      { name: 'カーテン・ブラインド（寝室）', cost: '' },
+      { name: 'カーテン・ブラインド（その他の部屋）', cost: '' },
+      { name: 'シーリングライト（リビング）', cost: '' },
+      { name: 'シーリングライト（寝室・各部屋）', cost: '' },
+      { name: 'エアコン 取付工事費', cost: '' },
+      { name: 'カーペット・ラグ（リビング）', cost: '' },
+      { name: 'フロアコーティング・ワックス', cost: '' },
+      { name: '壁紙・クロス追加工事', cost: '' },
+      { name: 'ウォシュレット 取付', cost: '' },
+    ]
+  },
+  {
+    id: 'kaden',
+    icon: '📺',
+    title: '家電',
+    subtitle: '冷蔵庫・洗濯機・テレビなど主要家電',
+    items: [
+      { name: '冷蔵庫', cost: '' },
+      { name: '洗濯機（縦型 or ドラム式）', cost: '' },
+      { name: '乾燥機（洗乾一体型でない場合）', cost: '' },
+      { name: 'エアコン 本体（各部屋）', cost: '' },
+      { name: 'テレビ', cost: '' },
+      { name: '電子レンジ・オーブンレンジ', cost: '' },
+      { name: '炊飯器', cost: '' },
+      { name: '掃除機（スティック or ロボット）', cost: '' },
+      { name: '食洗機', cost: '' },
+      { name: 'ドライヤー', cost: '' },
+    ]
+  },
+  {
+    id: 'kagu',
+    icon: '🛋️',
+    title: '家具',
+    subtitle: 'ベッド・ソファ・収納など',
+    items: [
+      { name: 'ベッド・マットレス（大人）', cost: '' },
+      { name: 'ベッド・マットレス（子ども）', cost: '' },
+      { name: 'ソファ', cost: '' },
+      { name: 'ダイニングテーブル＋椅子', cost: '' },
+      { name: 'リビングテーブル（ローテーブル）', cost: '' },
+      { name: 'テレビボード', cost: '' },
+      { name: '本棚・シェルフ', cost: '' },
+      { name: '衣装ケース・クローゼット収納', cost: '' },
+      { name: 'デスク・チェア（仕事・学習用）', cost: '' },
+      { name: '玄関収納・シューズラック', cost: '' },
+      { name: '鏡（姿見）', cost: '' },
+    ]
+  },
+  {
+    id: 'seikatsu',
+    icon: '🛁',
+    title: '生活用品・消耗品',
+    subtitle: 'キッチン・バス・日用品など',
+    items: [
+      { name: '食器・調理器具一式', cost: '' },
+      { name: 'フライパン・鍋セット', cost: '' },
+      { name: '寝具（布団・シーツ・枕）', cost: '' },
+      { name: 'バスタオル・フェイスタオル', cost: '' },
+      { name: 'バス用品（マット・ラック等）', cost: '' },
+      { name: 'トイレ用品一式（マット・収納等）', cost: '' },
+      { name: '洗面用品（コップ・歯ブラシスタンド等）', cost: '' },
+      { name: '洗濯用品（洗濯かご・ハンガー等）', cost: '' },
+      { name: 'キッチン収納用品', cost: '' },
+      { name: '掃除用品一式', cost: '' },
+      { name: 'ゴミ箱（各部屋・キッチン）', cost: '' },
+    ]
+  },
+  {
+    id: 'sonota',
+    icon: '📦',
+    title: 'その他・予備費',
+    subtitle: '想定外の出費・雑費など',
+    items: [
+      { name: '旧居の敷金精算・原状回復費用', cost: '' },
+      { name: '新居の初期費用（礼金・敷金残）', cost: '' },
+      { name: '鍵の交換費用', cost: '' },
+      { name: '転居挨拶品（旧居・新居の近隣）', cost: '' },
+      { name: '予備費・雑費（全体の5〜10%目安）', cost: '' },
+    ]
+  },
+];
+
+// ============================================================
+// ストレージ
+// ============================================================
+const STORAGE_KEY = 'hikkoshi-checklist-v1';
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+}
+
+function saveData(cats) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cats));
+  } catch(e) {}
+}
+
+// ============================================================
+// 状態
+// ============================================================
+let categories = loadData();
+
+function getState() {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY + '-state') || '{}');
+  return saved;
+}
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY + '-state', JSON.stringify(state));
+}
+
+// ============================================================
+// 数値フォーマット
+// ============================================================
+function fmt(n) {
+  if (!n || isNaN(n)) return '¥0';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+
+function parseCost(v) {
+  const n = parseFloat(String(v).replace(/,/g,''));
+  return isNaN(n) ? 0 : n;
+}
+
+// ============================================================
+// サマリー更新
+// ============================================================
+function updateSummary() {
+  let total = 0, done = 0, doneTotal = 0, all = 0;
+  categories.forEach(cat => {
+    cat.items.forEach(item => {
+      all++;
+      const cost = parseCost(item.cost);
+      total += cost;
+      if (item.checked) { done++; doneTotal += cost; }
+    });
+  });
+  document.getElementById('grand-total').textContent = fmt(total);
+  document.getElementById('done-count').textContent = done + ' / ' + all;
+  document.getElementById('done-cost').textContent = fmt(doneTotal);
+  document.getElementById('remaining-cost').textContent = fmt(total - doneTotal);
+}
+
+// ============================================================
+// カテゴリのコスト・進捗
+// ============================================================
+function getCatStats(cat) {
+  let total = 0, done = 0;
+  cat.items.forEach(item => {
+    total += parseCost(item.cost);
+    if (item.checked) done++;
+  });
+  return { total, done, all: cat.items.length };
+}
+
+function updateCatHeader(catId) {
+  const cat = categories.find(c => c.id === catId);
+  if (!cat) return;
+  const stats = getCatStats(cat);
+  const el = document.querySelector(`[data-cat="${catId}"]`);
+  if (!el) return;
+  el.querySelector('.cat-cost').textContent = fmt(stats.total);
+  el.querySelector('.cat-progress').textContent = stats.done + ' / ' + stats.all + ' 完了';
+  const bar = el.querySelector('.progress-bar');
+  bar.style.width = stats.all ? (stats.done / stats.all * 100) + '%' : '0%';
+}
+
+// ============================================================
+// レンダリング
+// ============================================================
+function renderAll() {
+  const state = getState();
+  const container = document.getElementById('main-content');
+  container.innerHTML = '';
+
+  categories.forEach(cat => {
+    container.appendChild(renderCategory(cat, state));
+  });
+
+  // 区切り
+  const sep = document.createElement('div');
+  sep.className = 'section-label';
+  sep.textContent = '+ カテゴリを追加';
+  container.appendChild(sep);
+
+  // 新カテゴリ追加エリア
+  const addWrap = document.createElement('div');
+  addWrap.className = 'add-category-wrap';
+  addWrap.innerHTML = `
+    <input type="text" id="new-cat-name" placeholder="新しいカテゴリ名（例：外構・庭）" maxlength="30">
+    <input type="text" id="new-cat-icon" placeholder="絵文字（例：🌿）" maxlength="4" style="max-width:90px">
+    <button class="add-cat-btn" onclick="addCategory()">カテゴリ追加</button>
+  `;
+  container.appendChild(addWrap);
+
+  // 操作ボタン
+  const sep2 = document.createElement('div');
+  sep2.className = 'section-label';
+  sep2.textContent = 'データ操作';
+  container.appendChild(sep2);
+
+  const actionBar = document.createElement('div');
+  actionBar.className = 'action-bar';
+  actionBar.innerHTML = `
+    <button class="action-btn" onclick="window.print()">🖨️ 印刷する</button>
+    <button class="action-btn" onclick="exportData()">💾 データをエクスポート</button>
+    <button class="action-btn" onclick="importDataPrompt()">📂 データをインポート</button>
+    <button class="action-btn" onclick="uncheckAll()">☑️ チェックをすべて外す</button>
+    <button class="action-btn danger" onclick="resetAll()">🗑️ リセット（初期化）</button>
+  `;
+  container.appendChild(actionBar);
+
+  // メモ
+  const sep3 = document.createElement('div');
+  sep3.className = 'section-label';
+  sep3.textContent = '共有メモ';
+  container.appendChild(sep3);
+
+  const memoWrap = document.createElement('div');
+  memoWrap.className = 'memo-area';
+  const savedMemo = localStorage.getItem(STORAGE_KEY + '-memo') || '';
+  memoWrap.innerHTML = `
+    <label>家族への連絡・メモ欄（自動保存）</label>
+    <textarea id="memo-text" placeholder="引越し日：○月○日　業者：○○引越しセンター&#10;新住所：東京都○○区...&#10;気になることや相談事をここに書いておこう">${savedMemo}</textarea>
+  `;
+  container.appendChild(memoWrap);
+  document.getElementById('memo-text').addEventListener('input', function() {
+    localStorage.setItem(STORAGE_KEY + '-memo', this.value);
+  });
+
+  updateSummary();
+}
+
+function renderCategory(cat, state) {
+  const isOpen = state[cat.id] !== false; // デフォルト開く
+  const stats = getCatStats(cat);
+
+  const div = document.createElement('div');
+  div.className = 'category';
+  div.setAttribute('data-cat', cat.id);
+
+  div.innerHTML = `
+    <div class="category-header" onclick="toggleCategory('${cat.id}')">
+      <span class="cat-icon">${cat.icon}</span>
+      <div class="cat-info">
+        <div class="cat-title">${cat.title}</div>
+        <div class="cat-subtitle">${cat.subtitle}</div>
+      </div>
+      <div class="cat-meta">
+        <div class="cat-cost">${fmt(stats.total)}</div>
+        <div class="cat-progress">${stats.done} / ${stats.all} 完了</div>
+      </div>
+      <span class="cat-toggle ${isOpen ? 'open' : ''}">▼</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" style="width:${stats.all ? (stats.done/stats.all*100) : 0}%"></div>
+    </div>
+    <div class="category-body ${isOpen ? '' : 'collapsed'}" id="body-${cat.id}">
+      ${cat.items.map((item, idx) => renderItemRow(cat.id, item, idx)).join('')}
+      <div class="add-row">
+        <input class="new-item-input" type="text" placeholder="＋ 項目を追加…" id="new-item-${cat.id}"
+          onkeydown="if(event.key==='Enter') addItem('${cat.id}')">
+        <button class="add-btn" onclick="addItem('${cat.id}')">追加</button>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function renderItemRow(catId, item, idx) {
+  const checkedClass = item.checked ? ' checked' : '';
+  return `
+    <div class="item-row${checkedClass}" id="row-${catId}-${idx}">
+      <input type="checkbox" class="item-check" ${item.checked ? 'checked' : ''}
+        onchange="toggleCheck('${catId}', ${idx}, this.checked)">
+      <span class="item-name" ondblclick="startEditName('${catId}',${idx})" title="ダブルクリックで名前を編集">${escHtml(item.name)}</span>
+      <div class="cost-wrap">
+        <span class="cost-yen">¥</span>
+        <input type="number" class="cost-input" placeholder="金額"
+          value="${item.cost || ''}" min="0" step="1000"
+          onchange="updateCost('${catId}', ${idx}, this.value)"
+          oninput="updateCost('${catId}', ${idx}, this.value)">
+      </div>
+      <button class="item-delete" onclick="deleteItem('${catId}', ${idx})" title="削除">✕</button>
+    </div>
+  `;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// イベントハンドラ
+// ============================================================
+function toggleCategory(catId) {
+  const body = document.getElementById('body-' + catId);
+  const toggle = document.querySelector(`[data-cat="${catId}"] .cat-toggle`);
+  const state = getState();
+  const isNowOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isNowOpen);
+  toggle.classList.toggle('open', !isNowOpen);
+  state[catId] = !isNowOpen;
+  saveState(state);
+}
+
+function toggleCheck(catId, idx, checked) {
+  const cat = categories.find(c => c.id === catId);
+  cat.items[idx].checked = checked;
+  saveData(categories);
+  const row = document.getElementById('row-' + catId + '-' + idx);
+  if (row) row.classList.toggle('checked', checked);
+  updateCatHeader(catId);
+  updateSummary();
+}
+
+function updateCost(catId, idx, val) {
+  const cat = categories.find(c => c.id === catId);
+  cat.items[idx].cost = val;
+  saveData(categories);
+  updateCatHeader(catId);
+  updateSummary();
+}
+
+function deleteItem(catId, idx) {
+  const cat = categories.find(c => c.id === catId);
+  cat.items.splice(idx, 1);
+  saveData(categories);
+  // 該当カテゴリのbodyだけ再描画
+  const state = getState();
+  const bodyEl = document.getElementById('body-' + catId);
+  const isOpen = !bodyEl.classList.contains('collapsed');
+  const newHtml = cat.items.map((item, i) => renderItemRow(catId, item, i)).join('');
+  // add-row以外を置き換え
+  const addRow = bodyEl.querySelector('.add-row');
+  bodyEl.innerHTML = newHtml;
+  bodyEl.appendChild(addRow);
+  if (!isOpen) bodyEl.classList.add('collapsed');
+  // addRowのイベントを再設定
+  const ni = bodyEl.querySelector('.new-item-input');
+  ni.id = 'new-item-' + catId;
+  ni.onkeydown = function(e) { if(e.key==='Enter') addItem(catId); };
+  bodyEl.querySelector('.add-btn').onclick = function() { addItem(catId); };
+  updateCatHeader(catId);
+  updateSummary();
+}
+
+function addItem(catId) {
+  const input = document.getElementById('new-item-' + catId);
+  const name = input.value.trim();
+  if (!name) return;
+  const cat = categories.find(c => c.id === catId);
+  cat.items.push({ name, cost: '', checked: false });
+  saveData(categories);
+  input.value = '';
+
+  const state = getState();
+  const bodyEl = document.getElementById('body-' + catId);
+  const isOpen = !bodyEl.classList.contains('collapsed');
+  const addRow = bodyEl.querySelector('.add-row');
+  const newHtml = cat.items.map((item, i) => renderItemRow(catId, item, i)).join('');
+  bodyEl.innerHTML = newHtml;
+  bodyEl.appendChild(addRow);
+  if (!isOpen) bodyEl.classList.add('collapsed');
+  const ni = bodyEl.querySelector('.new-item-input');
+  ni.id = 'new-item-' + catId;
+  ni.onkeydown = function(e) { if(e.key==='Enter') addItem(catId); };
+  bodyEl.querySelector('.add-btn').onclick = function() { addItem(catId); };
+  ni.focus();
+  updateCatHeader(catId);
+  updateSummary();
+}
+
+function startEditName(catId, idx) {
+  const cat = categories.find(c => c.id === catId);
+  const nameEl = document.querySelector(`#row-${catId}-${idx} .item-name`);
+  if (!nameEl) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'item-name-input';
+  input.value = cat.items[idx].name;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  function finish() {
+    const val = input.value.trim() || cat.items[idx].name;
+    cat.items[idx].name = val;
+    saveData(categories);
+    const span = document.createElement('span');
+    span.className = 'item-name';
+    span.textContent = val;
+    span.setAttribute('ondblclick', `startEditName('${catId}',${idx})`);
+    span.setAttribute('title', 'ダブルクリックで名前を編集');
+    input.replaceWith(span);
+  }
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', e => { if(e.key==='Enter' || e.key==='Escape') finish(); });
+}
+
+function addCategory() {
+  const nameInput = document.getElementById('new-cat-name');
+  const iconInput = document.getElementById('new-cat-icon');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const icon = iconInput.value.trim() || '📁';
+  const id = 'cat-' + Date.now();
+  categories.push({ id, icon, title: name, subtitle: '', items: [] });
+  saveData(categories);
+  renderAll();
+  // スクロール
+  setTimeout(() => {
+    const el = document.querySelector(`[data-cat="${id}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
+}
+
+function uncheckAll() {
+  if (!confirm('すべてのチェックを外しますか？（金額データは残ります）')) return;
+  categories.forEach(cat => cat.items.forEach(item => { item.checked = false; }));
+  saveData(categories);
+  renderAll();
+}
+
+function resetAll() {
+  if (!confirm('本当にリセットしますか？\n入力した金額・チェック・追加した項目がすべて消えます。')) return;
+  categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+  saveData(categories);
+  localStorage.removeItem(STORAGE_KEY + '-state');
+  localStorage.removeItem(STORAGE_KEY + '-memo');
+  renderAll();
+}
+
+function exportData() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    categories,
+    memo: localStorage.getItem(STORAGE_KEY + '-memo') || ''
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '引越しチェックリスト_' + new Date().toLocaleDateString('ja-JP').replace(/\//g,'-') + '.json';
+  a.click();
+}
+
+function importDataPrompt() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.categories) throw new Error('invalid');
+        if (!confirm('データをインポートします。現在のデータは上書きされます。続けますか？')) return;
+        categories = data.categories;
+        saveData(categories);
+        if (data.memo) localStorage.setItem(STORAGE_KEY + '-memo', data.memo);
+        renderAll();
+        alert('インポートが完了しました！');
+      } catch(err) {
+        alert('ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+renderAll();
+</script>
+</body>
+</html>
