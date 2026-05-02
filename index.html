@@ -729,6 +729,7 @@ function toggleCheck(catId, idx, checked) {
   const cat = categories.find(c => c.id === catId);
   cat.items[idx].checked = checked;
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   const row = document.getElementById('row-' + catId + '-' + idx);
   if (row) row.classList.toggle('checked', checked);
   updateCatHeader(catId);
@@ -739,6 +740,7 @@ function updateCost(catId, idx, val) {
   const cat = categories.find(c => c.id === catId);
   cat.items[idx].cost = val;
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   updateCatHeader(catId);
   updateSummary();
 }
@@ -747,6 +749,7 @@ function deleteItem(catId, idx) {
   const cat = categories.find(c => c.id === catId);
   cat.items.splice(idx, 1);
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   // 該当カテゴリのbodyだけ再描画
   const state = getState();
   const bodyEl = document.getElementById('body-' + catId);
@@ -773,6 +776,7 @@ function addItem(catId) {
   const cat = categories.find(c => c.id === catId);
   cat.items.push({ name, cost: '', checked: false });
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   input.value = '';
 
   const state = getState();
@@ -807,6 +811,7 @@ function startEditName(catId, idx) {
     const val = input.value.trim() || cat.items[idx].name;
     cat.items[idx].name = val;
     saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
     const span = document.createElement('span');
     span.className = 'item-name';
     span.textContent = val;
@@ -827,6 +832,7 @@ function addCategory() {
   const id = 'cat-' + Date.now();
   categories.push({ id, icon, title: name, subtitle: '', items: [] });
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   renderAll();
   // スクロール
   setTimeout(() => {
@@ -839,6 +845,7 @@ function uncheckAll() {
   if (!confirm('すべてのチェックを外しますか？（金額データは残ります）')) return;
   categories.forEach(cat => cat.items.forEach(item => { item.checked = false; }));
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   renderAll();
 }
 
@@ -846,6 +853,7 @@ function resetAll() {
   if (!confirm('本当にリセットしますか？\n入力した金額・チェック・追加した項目がすべて消えます。')) return;
   categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
   localStorage.removeItem(STORAGE_KEY + '-state');
   localStorage.removeItem(STORAGE_KEY + '-memo');
   renderAll();
@@ -880,6 +888,7 @@ function importDataPrompt() {
         if (!confirm('データをインポートします。現在のデータは上書きされます。続けますか？')) return;
         categories = data.categories;
         saveData(categories);
+if (window.saveToCloud) window.saveToCloud(categories);
         if (data.memo) localStorage.setItem(STORAGE_KEY + '-memo', data.memo);
         renderAll();
         alert('インポートが完了しました！');
